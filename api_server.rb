@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'webrick'
 require 'json'
+require 'uri'
 
 PORT = 4567
 ROOT_DIR = File.dirname(__FILE__)
@@ -12,7 +13,7 @@ Dir.mkdir(PAPERS_DIR) unless Dir.exist?(PAPERS_DIR)
 class CORSServlet < WEBrick::HTTPServlet::AbstractServlet
   def do_OPTIONS(req, res)
     res['Access-Control-Allow-Origin'] = '*'
-    res['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    res['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
     res['Access-Control-Allow-Headers'] = 'Content-Type'
     res['Content-Type'] = 'text/plain'
     res.body = ''
@@ -135,6 +136,54 @@ class ListPapersServlet < WEBrick::HTTPServlet::AbstractServlet
   end
 end
 
+class DeletePaperServlet < WEBrick::HTTPServlet::AbstractServlet
+  def do_OPTIONS(req, res)
+    res['Access-Control-Allow-Origin'] = '*'
+    res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    res['Access-Control-Allow-Headers'] = 'Content-Type'
+    res['Content-Type'] = 'text/plain'
+    res.body = ''
+  end
+  
+  def do_POST(req, res)
+    res['Access-Control-Allow-Origin'] = '*'
+    res['Content-Type'] = 'application/json'
+    
+    begin
+      data = JSON.parse(req.body)
+      filename = data['filename'].to_s.strip
+      
+      if filename.empty?
+        raise 'Missing filename'
+      end
+      
+      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
+      filename = filename + '.md' unless filename.end_with?('.md')
+      
+      filepath = File.join(PAPERS_DIR, filename)
+      
+      unless File.exist?(filepath)
+        raise "File not found: #{filename}"
+      end
+      
+      File.delete(filepath)
+      
+      res.status = 200
+      res.body = { success: true, filename: filename }.to_json
+      
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Deleted: #{filename}"
+      
+    rescue JSON::ParserError => e
+      res.status = 400
+      res.body = { success: false, error: 'Invalid JSON' }.to_json
+    rescue => e
+      res.status = 500
+      res.body = { success: false, error: e.message }.to_json
+      puts "[ERROR] #{e.message}"
+    end
+  end
+end
+
 server = WEBrick::HTTPServer.new(
   Port: PORT,
   DocumentRoot: nil,
@@ -142,6 +191,7 @@ server = WEBrick::HTTPServer.new(
 )
 
 server.mount('/add-paper', AddPaperServlet)
+server.mount('/delete-paper', DeletePaperServlet)
 server.mount('/rebuild', RebuildServlet)
 server.mount('/list-papers', ListPapersServlet)
 
@@ -162,9 +212,10 @@ puts "URL:      http://localhost:#{PORT}"
 puts "Papers:   #{PAPERS_DIR}"
 puts ""
 puts "Endpoints:"
-puts "  POST /add-paper    Add a new paper"
-puts "  POST /rebuild      Rebuild Jekyll site"
-puts "  GET  /list-papers  List all papers"
+puts "  POST /add-paper     Add a new paper"
+puts "  POST /delete-paper Delete a paper (JSON body: {filename: 'xxx'})"
+puts "  POST /rebuild       Rebuild Jekyll site"
+puts "  GET  /list-papers   List all papers"
 puts ""
 puts "Press Ctrl+C to stop"
 puts "=" * 50

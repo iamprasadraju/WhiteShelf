@@ -2,6 +2,10 @@
 layout: default
 ---
 <article class="paper-detail">
+  {% if page.arxiv %}
+  <p class="paper-code-top"><a href="https://arxiv.org/abs/{{ page.arxiv }}" target="_blank">arXiv:{{ page.arxiv }}</a></p>
+  {% endif %}
+  
   <h1 class="paper-title">{{ page.title }}</h1>
   
   <p class="paper-authors">
@@ -41,4 +45,51 @@ layout: default
 
 <hr>
 
+<div class="paper-actions">
+  <button class="btn-delete" data-filename="{{ page.name }}">Delete Paper</button>
+</div>
+
 <p><a href="{{ '/' | relative_url }}">&larr; Back to papers</a></p>
+
+<div id="delete-modal" class="modal">
+  <div class="modal-content">
+    <h3>Delete Paper</h3>
+    <p>Are you sure you want to delete this paper? This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button id="confirm-delete" class="btn-delete">Delete</button>
+      <button id="cancel-delete" class="btn-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelector('.btn-delete').addEventListener('click', function() {
+  document.getElementById('delete-modal').style.display = 'flex';
+});
+
+document.getElementById('cancel-delete').addEventListener('click', function() {
+  document.getElementById('delete-modal').style.display = 'none';
+});
+
+document.getElementById('confirm-delete').addEventListener('click', async function() {
+  const filename = document.querySelector('.btn-delete').dataset.filename;
+  
+  try {
+    const response = await fetch('http://localhost:4567/delete-paper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: filename })
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      document.getElementById('delete-modal').style.display = 'none';
+      window.location.href = '{{ "/" | relative_url }}';
+    } else {
+      alert('Error: ' + data.error);
+    }
+  } catch (error) {
+    alert('Error deleting paper: ' + error.message);
+  }
+});
+</script>
