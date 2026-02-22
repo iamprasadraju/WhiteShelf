@@ -28,8 +28,8 @@ echo ""
 echo "Both servers running. Press Ctrl+C to stop."
 echo ""
 
-# Start Jekyll
-bundle exec jekyll serve
+# Start Jekyll with baseurl to match GitHub Pages
+bundle exec jekyll serve --baseurl /ResearchRack
 
 # When Jekyll stops, kill API server
 kill $API_PID 2>/dev/null
