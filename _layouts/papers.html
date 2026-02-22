@@ -1,0 +1,78 @@
+---
+layout: default
+---
+<div class="page-header">
+  <div class="page-header-row">
+    <h1 class="page-title">Research Papers</h1>
+    <a href="{{ '/add' | relative_url }}" class="btn btn-primary">Add Paper</a>
+  </div>
+</div>
+
+<div class="filters-section">
+  <div class="category-filters">
+    <button class="category-btn active" data-category="all">All</button>
+    {% assign categories = site.papers | map: 'category' | uniq | sort %}
+    {% for cat in categories %}
+    <button class="category-btn" data-category="{{ cat }}">{{ cat | replace: '-', ' ' | capitalize }}</button>
+    {% endfor %}
+  </div>
+  
+  <div class="tag-filters">
+    <span style="font-size: 13px; color: var(--color-text-tertiary); margin-right: 8px;">Tags:</span>
+    <button class="tag-btn active" data-tag="all">all</button>
+    {% assign all_tags = site.papers | map: 'tags' | join: ',' | split: ',' | uniq | sort %}
+    {% for tag in all_tags %}
+    <button class="tag-btn" data-tag="{{ tag }}">{{ tag }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<p class="papers-count"><span id="visible-count">{{ site.papers.size }}</span> papers</p>
+
+<ul class="papers-list">
+{% assign papers = site.papers | sort: 'date_added' | reverse %}
+{% for paper in papers %}
+  <li class="paper-item visible"
+      data-category="{{ paper.category | default: 'other' }}"
+      data-tags="{{ paper.tags | join: ',' }}"
+      data-title="{{ paper.title | downcase }}">
+    <div class="paper-row">
+      <h2 class="paper-title">
+        <a href="{{ paper.url | relative_url }}">{{ paper.title }}</a>
+      </h2>
+      <div class="paper-meta">
+        <span class="paper-year">{{ paper.year }}</span>
+        {% if paper.arxiv %}
+        <a class="paper-link" href="https://arxiv.org/abs/{{ paper.arxiv }}" target="_blank">arXiv</a>
+        {% endif %}
+        {% if paper.pdf %}
+        <a class="paper-link" href="{{ paper.pdf }}" target="_blank">PDF</a>
+        {% elsif paper.arxiv %}
+        <a class="paper-link" href="https://arxiv.org/pdf/{{ paper.arxiv }}.pdf" target="_blank">PDF</a>
+        {% endif %}
+        {% if paper.doi %}
+        <a class="paper-link" href="https://doi.org/{{ paper.doi }}" target="_blank">DOI</a>
+        {% endif %}
+      </div>
+    </div>
+    <p class="paper-authors">
+      {% if paper.authors %}{{ paper.authors | join: ", " }}{% endif %}
+    </p>
+    {% if paper.tags %}
+    <div class="paper-tags">
+      {% for tag in paper.tags %}
+      <span class="paper-tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+
+<div class="no-results" id="no-results" style="display: none;">
+  No papers match your filters.
+</div>
+
+{% if site.papers.size == 0 %}
+<p class="no-results">No papers yet. <a href="{{ '/add' | relative_url }}">Add your first paper</a>.</p>
+{% endif %}
