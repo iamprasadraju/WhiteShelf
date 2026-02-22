@@ -3,9 +3,6 @@ description: A Jekyll theme for organizing research papers
 baseurl: ""
 url: ""
 
-plugins:
-  - jekyll-scholar
-
 collections:
   papers:
     output: true
@@ -18,27 +15,14 @@ defaults:
     values:
       layout: "paper"
 
-scholar:
-  style: apa
-  locale: en
-  source: ./_bibliography
-  bibliography: papers.bib
-  bibliography_template: bibtemplate
-  replace_strings: true
-  join_strings: true
-  details_dir: bibliography
-  details_layout: bibtex.html
-  details_link: Details
-  query: "@*"
-
-pagefind:
-  enabled: true
-
 exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules
   - vendor
+  - api_server.rb
+  - start.sh
+  - stop.sh
 
 include:
   - _pages

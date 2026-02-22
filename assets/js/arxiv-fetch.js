@@ -379,53 +379,92 @@ function downloadPaper() {
   const status = document.getElementById('status');
   const output = document.getElementById('output');
   
-  status.className = 'status loading';
-  status.textContent = 'Saving...';
+  // Check if running locally (API server available)
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  // Try to save via local API server
-  fetch('http://localhost:4567/add-paper', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      filename: result.filename,
-      content: result.content
+  if (isLocal) {
+    // Try local API server first
+    fetch('http://localhost:4567/add-paper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: result.filename, content: result.content })
     })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      status.className = 'status success';
-      status.textContent = 'Added to shelf!';
-      output.innerHTML = `<strong>Added: ${data.filename}</strong>\n\nSaved to _papers/\n\n<a href="/">Refresh page</a> to see the new paper.`;
-      output.style.display = 'block';
-      
-      // Clear form
-      document.getElementById('arxiv-url').value = '';
-      document.getElementById('title').value = '';
-      document.getElementById('authors').value = '';
-      document.getElementById('year').value = '';
-      document.getElementById('arxiv-id').value = '';
-      document.getElementById('pdf-link').value = '';
-      document.getElementById('category').value = '';
-      document.getElementById('category-select').value = '';
-      document.getElementById('tags').value = '';
-      document.getElementById('summary').value = '';
-      
-      setTimeout(() => { status.textContent = ''; }, 3000);
-    } else {
-      throw new Error(data.error || 'Failed to save');
-    }
-  })
-  .catch(error => {
-    status.className = 'status error';
-    status.textContent = 'API server not running';
-    
-    output.innerHTML = `<strong>Could not save automatically</strong>\n\nStart the API server first:\n<code>ruby api_server.rb</code>\n\nOr copy the markdown below and create the file manually in _papers/\n\n<hr>\n<pre>${result.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
-    output.style.display = 'block';
-  });
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        status.className = 'status success';
+        status.textContent = 'Added to shelf!';
+        output.innerHTML = `<strong>Added: ${data.filename}</strong><br><br><a href="/">Refresh page</a> to see the new paper.`;
+        output.style.display = 'block';
+        clearForm();
+        setTimeout(() => { status.textContent = ''; }, 3000);
+        return;
+      }
+      throw new Error(data.error);
+    })
+    .catch(() => {
+      // Fallback to clipboard/download
+      copyToClipboard(result);
+    });
+  } else {
+    // GitHub Pages - use clipboard/download
+    copyToClipboard(result);
+  }
 }
+
+function copyToClipboard(result) {
+  const status = document.getElementById('status');
+  const output = document.getElementById('output');
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(result.content).then(() => {
+      status.className = 'status success';
+      status.textContent = 'Copied to clipboard!';
+      output.innerHTML = `<strong>Markdown copied!</strong><br><br>Create file <code>${result.filename}</code> in <code>_papers/</code> folder and paste.<br><br><a href="https://github.com/new" target="_blank" style="color:#0066cc;">Create file on GitHub →</a><br><br><pre style="background:#f5f5f5;padding:10px;overflow-x:auto;font-size:12px;">${result.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+      output.style.display = 'block';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    }).catch(() => {
+      downloadAsFile(result);
+    });
+  } else {
+    downloadAsFile(result);
+  }
+}
+
+function downloadAsFile(result) {
+  const status = document.getElementById('status');
+  const output = document.getElementById('output');
+  
+  const blob = new Blob([result.content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = result.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  status.className = 'status success';
+  status.textContent = 'Downloaded!';
+  output.innerHTML = `<strong>File: ${result.filename}</strong><br><br>Save to <code>_papers/</code> and commit to GitHub.<br><br><pre style="background:#f5f5f5;padding:10px;overflow-x:auto;font-size:12px;">${result.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+  output.style.display = 'block';
+  setTimeout(() => { status.textContent = ''; }, 3000);
+}
+
+function clearForm() {
+  document.getElementById('arxiv-url').value = '';
+  document.getElementById('title').value = '';
+  document.getElementById('authors').value = '';
+  document.getElementById('year').value = '';
+  document.getElementById('arxiv-id').value = '';
+  document.getElementById('pdf-link').value = '';
+  document.getElementById('category').value = '';
+  document.getElementById('category-select').value = '';
+  document.getElementById('tags').value = '';
+  document.getElementById('summary').value = '';
+}
+
 document.getElementById('arxiv-url')?.addEventListener('keypress', function(e) {
   if (e.key === 'Enter') fetchArxiv();
 });
