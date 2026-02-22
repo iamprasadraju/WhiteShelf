@@ -1,7 +1,7 @@
 title: WhiteShelf
 description: A Jekyll theme for organizing research papers
-baseurl: ""
-url: ""
+baseurl: "/WhiteShelf"
+url: "https://iamprasadraju.github.io"
 
 collections:
   papers:
