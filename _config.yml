@@ -1,6 +1,6 @@
-title: WhiteShelf
+title: ResearchRack
 description: A Jekyll theme for organizing research papers
-baseurl: "/WhiteShelf"
+baseurl: "/ResearchRack"
 url: "https://iamprasadraju.github.io"
 
 collections:
