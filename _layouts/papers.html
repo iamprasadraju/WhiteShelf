@@ -44,6 +44,7 @@ layout: default
         <span class="paper-year">{{ paper.year }}</span>
         {% if paper.arxiv %}
         <a class="paper-link" href="https://arxiv.org/abs/{{ paper.arxiv }}" target="_blank">arXiv</a>
+        <a class="paper-link" href="https://arxivisual.org/abs/{{ paper.arxiv }}" target="_blank">ArXivIsual</a>
         {% endif %}
         {% if paper.pdf %}
         <a class="paper-link" href="{{ paper.pdf }}" target="_blank">PDF</a>
