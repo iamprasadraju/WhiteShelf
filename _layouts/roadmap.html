@@ -51,6 +51,20 @@ layout: default
       <div id="panel-resources" class="panel-resources"></div>
       <button class="btn-link" id="add-resource-btn">+ Add resource</button>
     </div>
+
+    <div class="panel-field">
+      <label>Quick Preview</label>
+      <div class="resource-badges">
+        <div class="badge-section">
+          <span class="badge-label">Free</span>
+          <div id="badge-free" class="badge-list"></div>
+        </div>
+        <div class="badge-section">
+          <span class="badge-label">Premium</span>
+          <div id="badge-premium" class="badge-list"></div>
+        </div>
+      </div>
+    </div>
     
     <div class="panel-field">
       <label>Notes</label>
@@ -111,6 +125,12 @@ layout: default
         <option value="article">Article</option>
         <option value="practice">Practice</option>
       </select>
+    </div>
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="resource-premium">
+        Premium Resource
+      </label>
     </div>
     <div class="modal-actions">
       <button id="save-resource-btn" class="btn-primary">Add</button>
@@ -201,8 +221,11 @@ layout: default
 }
 
 .btn-add-node {
-  background: #fff;
-  color: #1a1a2e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
 }
 
 .btn-delete-roadmap {
@@ -396,6 +419,87 @@ layout: default
   background: #cc0000;
   color: #fff;
 }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.resource-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.badge-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badge-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.5px;
+}
+
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+}
+
+.badge.free {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.badge.premium {
+  background: #fff3e0;
+  color: #f57c00;
+  border: 1px solid #ffe0b2;
+}
+
+.badge i {
+  font-size: 10px;
+}
+
+.badge-icon {
+  font-size: 10px;
+}
+
+.badge-empty {
+  font-size: 11px;
+  color: #aaa;
+  font-style: italic;
+}
 </style>
 
 <script>
@@ -518,17 +622,21 @@ function drawLines() {
 }
 
 function openPanel(node) {
-  currentNode = node;
-  tempResources = [...(node.resources || [])];
-  tempParents = [...(node.parents || (node.parent ? [node.parent] : []))];
-  
-  document.getElementById('panel-title').textContent = node.label;
-  document.getElementById('panel-node-title').value = node.label;
-  document.getElementById('panel-notes').value = node.notes || '';
-  
-  renderParents();
-  renderResources();
-  document.getElementById('node-panel').classList.add('open');
+  try {
+    currentNode = node;
+    tempResources = [...(node.resources || [])];
+    tempParents = [...(node.parents || (node.parent ? [node.parent] : []))];
+    
+    document.getElementById('panel-title').textContent = node.label;
+    document.getElementById('panel-node-title').value = node.label;
+    document.getElementById('panel-notes').value = node.notes || '';
+    
+    renderParents();
+    renderResources();
+    document.getElementById('node-panel').classList.add('open');
+  } catch (e) {
+    console.error('Error opening panel:', e);
+  }
 }
 
 function closePanel() {
@@ -536,10 +644,55 @@ function closePanel() {
   currentNode = null;
 }
 
+function getBadgeIcon(type) {
+  const icons = {
+    article: '📄',
+    video: '🎬',
+    docs: '📚',
+    course: '🎓',
+    practice: '💻'
+  };
+  return icons[type] || '📎';
+}
+
+function renderBadges() {
+  const freeList = document.getElementById('badge-free');
+  const premiumList = document.getElementById('badge-premium');
+  
+  if (!freeList || !premiumList) return;
+  
+  const resources = tempResources || [];
+  const freeResources = resources.filter(r => !r.premium);
+  const premiumResources = resources.filter(r => r.premium);
+  
+  if (freeResources.length) {
+    freeList.innerHTML = freeResources.map(r => 
+      `<a href="${r.url}" target="_blank" class="badge free" title="${r.title}">
+        <span class="badge-icon">${getBadgeIcon(r.type)}</span>
+        ${r.title.length > 20 ? r.title.substring(0, 20) + '...' : r.title}
+      </a>`
+    ).join('');
+  } else {
+    freeList.innerHTML = '<span class="badge-empty">None</span>';
+  }
+  
+  if (premiumResources.length) {
+    premiumList.innerHTML = premiumResources.map(r => 
+      `<a href="${r.url}" target="_blank" class="badge premium" title="${r.title}">
+        <span class="badge-icon">${getBadgeIcon(r.type)}</span>
+        ${r.title.length > 20 ? r.title.substring(0, 20) + '...' : r.title}
+      </a>`
+    ).join('');
+  } else {
+    premiumList.innerHTML = '<span class="badge-empty">None</span>';
+  }
+}
+
 function renderParents() {
   const el = document.getElementById('panel-parents');
+  if (!el) return;
   el.innerHTML = '';
-  if (!tempParents.length) {
+  if (!tempParents || !tempParents.length) {
     el.innerHTML = '<span style="color:#888;font-size:13px;">None</span>';
     return;
   }
@@ -554,16 +707,13 @@ function renderParents() {
   });
 }
 
-window.removeParent = function(pid) {
-  tempParents = tempParents.filter(p => p !== pid);
-  renderParents();
-};
-
 function renderResources() {
   const el = document.getElementById('panel-resources');
+  if (!el) return;
   el.innerHTML = '';
-  if (!tempResources.length) {
+  if (!tempResources || !tempResources.length) {
     el.innerHTML = '<span style="color:#888;font-size:13px;">None</span>';
+    renderBadges();
     return;
   }
   tempResources.forEach((r, i) => {
@@ -572,7 +722,13 @@ function renderResources() {
     div.innerHTML = `<a href="${r.url}" target="_blank">${r.title}</a><button class="btn-link" onclick="removeResource(${i})">×</button>`;
     el.appendChild(div);
   });
+  renderBadges();
 }
+
+window.removeParent = function(pid) {
+  tempParents = tempParents.filter(p => p !== pid);
+  renderParents();
+};
 
 window.removeResource = function(i) {
   tempResources.splice(i, 1);
@@ -609,6 +765,7 @@ document.getElementById('add-resource-btn').addEventListener('click', () => {
   document.getElementById('resource-title').value = '';
   document.getElementById('resource-url').value = '';
   document.getElementById('resource-type').value = 'docs';
+  document.getElementById('resource-premium').checked = false;
   document.getElementById('add-resource-modal').style.display = 'flex';
 });
 
@@ -620,11 +777,13 @@ document.getElementById('save-resource-btn').addEventListener('click', () => {
   const title = document.getElementById('resource-title').value.trim();
   const url = document.getElementById('resource-url').value.trim();
   const type = document.getElementById('resource-type').value;
+  const premium = document.getElementById('resource-premium').checked;
   if (!title || !url) {
     showMessage('Error', 'Fill all fields');
     return;
   }
-  tempResources.push({ title, url, type });
+  tempResources.push({ title, url, type, premium });
+  console.log('Added resource, tempResources now:', tempResources);
   renderResources();
   document.getElementById('add-resource-modal').style.display = 'none';
 });
@@ -637,6 +796,7 @@ document.getElementById('save-node-btn').addEventListener('click', async () => {
     showMessage('Error', 'Title required');
     return;
   }
+  console.log('Saving resources:', tempResources);
   try {
     const res = await fetch('http://localhost:4567/update-node', {
       method: 'POST',
