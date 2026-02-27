@@ -8,9 +8,11 @@ PORT = 4567
 ROOT_DIR = File.dirname(__FILE__)
 PAPERS_DIR = File.join(ROOT_DIR, '_papers')
 BOOKS_DIR = File.join(ROOT_DIR, '_books')
+PDFS_DIR = File.join(ROOT_DIR, '_pdfs')
 
 Dir.mkdir(PAPERS_DIR) unless Dir.exist?(PAPERS_DIR)
 Dir.mkdir(BOOKS_DIR) unless Dir.exist?(BOOKS_DIR)
+Dir.mkdir(PDFS_DIR) unless Dir.exist?(PDFS_DIR)
 
 # Custom servlet to handle CORS properly
 class CORSServlet < WEBrick::HTTPServlet::AbstractServlet
@@ -402,41 +404,51 @@ class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
       upload_dir = File.join(ROOT_DIR, '_pdfs')
       Dir.mkdir(upload_dir) unless Dir.exist?(upload_dir)
       
-      boundary = req['Content-Type'][/boundary=(.+)/, 1]
-      return res.body = { success: false, error: 'No file uploaded' }.to_json unless boundary
-      
       body = req.body
-      parts = body.split("--#{boundary}")
+      content_type = req['Content-Type']
       
-      file_content = nil
+      if content_type =~ /boundary=(.+)/
+        boundary = $1
+      else
+        return res.body = { success: false, error: 'No boundary' }.to_json
+      end
+      
       filename = nil
+      file_data = nil
       
+      parts = body.split("--#{boundary}")
       parts.each do |part|
-        if part.include?('filename=')
-          filename_match = part.match(/filename="(.+?)"/)
-          filename = filename_match[1] if filename_match
-          
-          content_match = part.match(/\r\n\r\n(.+)\r\n--/m)
-          if content_match
-            file_content = content_match[1]
+        if part.include?('filename=') && part !~ /filename=""/
+          if part =~ /filename="([^"]+)"/
+            filename = $1
           end
+          
+          idx = part.index("\r\n\r\n")
+          if idx
+            file_data = part[(idx + 4)..-1]
+            file_data = file_data.sub(/\r\n--\s*$/, '') if file_data
+          end
+          
+          break if filename && file_data
         end
       end
       
-      return res.body = { success: false, error: 'No file found' }.to_json unless file_content && filename
+      if !filename || !file_data || file_data.length < 100
+        return res.body = { success: false, error: 'Could not parse PDF file' }.to_json
+      end
       
       safe_filename = filename.gsub(/[^a-zA-Z0-9._-]/, '_')
+      safe_filename = Time.now.to_i.to_s + '_' + safe_filename
       filepath = File.join(upload_dir, safe_filename)
       
-      File.write(filepath, file_content)
+      File.binwrite(filepath, file_data)
       
-      pdf_url = "/_pdfs/#{safe_filename}"
+      pdf_url = "/ResearchRack/_pdfs/#{safe_filename}"
       
       res.status = 200
       res.body = { success: true, url: pdf_url, filename: safe_filename }.to_json
       
       puts "[#{Time.now.strftime('%H:%M:%S')}] Uploaded PDF: #{safe_filename}"
-      
     rescue => e
       res.status = 500
       res.body = { success: false, error: e.message }.to_json
@@ -509,6 +521,13 @@ class UpdateBookServlet < WEBrick::HTTPServlet::AbstractServlet
       
       File.write(filepath, new_content)
       
+      Dir.chdir(ROOT_DIR) do
+        output = `bundle exec jekyll build 2>&1`
+        unless $?.success?
+          puts "[JEKYL ERROR] #{output}"
+        end
+      end
+      
       res.status = 200
       res.body = { success: true, filename: filename }.to_json
       
@@ -531,7 +550,25 @@ server = WEBrick::HTTPServer.new(
   AccessLog: [[STDOUT, WEBrick::AccessLog::COMMON_LOG_FORMAT]]
 )
 
-server.mount('/add-paper', AddPaperServlet)
+class PdfServlet < WEBrick::HTTPServlet::AbstractServlet
+  def do_GET(req, res)
+    res['Access-Control-Allow-Origin'] = '*'
+    
+    filename = req.path_info.gsub('/ResearchRack/_pdfs/', '')
+    filepath = File.join(PDFS_DIR, filename)
+    
+    if File.exist?(filepath) && File.file?(filepath)
+      res['Content-Type'] = 'application/pdf'
+      res['Content-Disposition'] = 'inline'
+      res.body = File.read(filepath)
+    else
+      res.status = 404
+      res.body = 'File not found'
+    end
+  end
+end
+
+server.mount('/_pdfs', PdfServlet)
 server.mount('/delete-paper', DeletePaperServlet)
 server.mount('/update-paper', UpdatePaperServlet)
 server.mount('/add-book', AddBookServlet)
