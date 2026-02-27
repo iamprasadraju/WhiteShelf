@@ -15,6 +15,25 @@ layout: default
   </div>
 </div>
 
+{% assign all_subjects = "" %}
+{% for book in site.books %}
+  {% if book.subjects %}
+    {% for subject in book.subjects %}
+      {% assign all_subjects = all_subjects | append: subject | append: "," %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% assign unique_subjects = all_subjects | split: "," | compact | uniq | sort %}
+
+{% if unique_subjects.size > 0 %}
+<div class="subject-filters">
+  <button class="subject-btn active" data-subject="all">All</button>
+  {% for subject in unique_subjects %}
+  <button class="subject-btn" data-subject="{{ subject }}">{{ subject }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div id="search-results" class="search-results" style="display: none;">
   <h3>Search Results</h3>
   <div id="results-grid" class="books-grid"></div>
@@ -24,10 +43,10 @@ layout: default
   <p class="books-count"><span id="visible-count">{{ site.books.size }}</span> books</p>
   
   {% if site.books.size > 0 %}
-  <div class="books-grid">
+  <div class="books-grid" id="books-grid">
     {% assign books = site.books | sort: 'date_added' | reverse %}
     {% for book in books %}
-    <a href="{{ book.url | relative_url }}" class="book-card">
+    <a href="{{ book.url | relative_url }}" class="book-card" data-subjects="{{ book.subjects | join: ',' }}">
       {% if book.cover_url %}
       <div class="book-card-cover">
         <img src="{{ book.cover_url }}" alt="{{ book.title }}">
@@ -104,6 +123,29 @@ layout: default
 
 <script>
 let selectedBook = null;
+
+document.querySelectorAll('.subject-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    
+    const subject = this.dataset.subject;
+    const books = document.querySelectorAll('#books-grid .book-card');
+    let visibleCount = 0;
+    
+    books.forEach(card => {
+      const cardSubjects = card.dataset.subjects || '';
+      if (subject === 'all' || cardSubjects.includes(subject)) {
+        card.style.display = '';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+    
+    document.getElementById('visible-count').textContent = visibleCount;
+  });
+});
 
 function showMessage(title, text) {
   document.getElementById('message-title').textContent = title;

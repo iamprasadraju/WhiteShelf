@@ -806,6 +806,35 @@ hr {
   margin-bottom: 24px;
 }
 
+.subject-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.subject-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-btn:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.subject-btn.active {
+  background: #b31b1b;
+  border-color: #b31b1b;
+  color: #fff;
+}
+
 .search-box {
   display: flex;
   gap: 12px;
@@ -956,7 +985,7 @@ hr {
 }
 
 .book-cover-wrapper {
-  width: 220px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -980,16 +1009,37 @@ hr {
 
 .book-info-grid {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.book-info-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .book-info-main {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.book-link {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #b31b1b;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.book-link:hover {
+  background: #8b1515;
 }
 
 .book-title {
@@ -1021,12 +1071,6 @@ hr {
 
 .book-link:hover {
   background: #8b1515;
-}
-
-.book-info-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .meta-list {
@@ -1586,14 +1630,9 @@ footer a {
     gap: 12px;
   }
   
-  .book-header-row {
-    display: flex;
-    flex-direction: column;
-  }
-  
   .book-title-mobile {
     display: block;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     color: #111;
     margin: 0 0 12px;
@@ -1610,39 +1649,71 @@ footer a {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
   }
   
   .book-cover-wrapper {
-    width: 80px;
+    width: 120px;
     flex-shrink: 0;
   }
   
-  .book-info-meta {
-    order: 1;
+  .book-info-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
   }
   
-  .book-info-main {
-    order: 2;
-    margin-top: 4px;
+  .book-title-mobile {
+    font-size: 20px;
+  }
+  
+  .book-info-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   
   .book-title {
     display: none;
   }
   
-  .book-title-mobile {
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 8px;
+  .book-authors {
+    font-size: 14px;
+    color: #555;
   }
   
-  .book-authors {
+  .book-link {
+    display: inline-block;
+    padding: 8px 14px;
     font-size: 13px;
-    color: #555;
+    margin-top: 8px;
+  }
+  
+  .meta-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .meta-row {
+    display: flex;
+    gap: 4px;
+    border: none;
+    padding: 0;
+  }
+  
+  .meta-label {
+    font-size: 12px;
+    color: #888;
+  }
+  
+  .meta-value {
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
   }
   
   .book-link {
@@ -1676,12 +1747,6 @@ footer a {
     font-weight: 500;
   }
   
-  .meta-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  
   .meta-row {
     border: none;
     padding: 0;
@@ -1713,6 +1778,11 @@ footer a {
   
   .search-box {
     flex-direction: column;
+  }
+  
+  .search-box input,
+  .search-box button {
+    width: 100%;
   }
 }
 

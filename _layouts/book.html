@@ -15,6 +15,12 @@ layout: default
     
     <div class="book-info-grid">
       <div class="book-info-meta">
+        {% if page.authors %}
+        <div class="meta-row">
+          <span class="meta-label">Author</span>
+          <span class="meta-value">{{ page.authors | join: ", " }}</span>
+        </div>
+        {% endif %}
         {% if page.publish_year or page.pages or page.edition_count or page.publisher %}
         <div class="meta-list">
           {% if page.publish_year %}
@@ -42,12 +48,6 @@ layout: default
           </div>
           {% endif %}
         </div>
-        {% endif %}
-      </div>
-      
-      <div class="book-info-main">
-        {% if page.authors %}
-        <p class="book-authors">{{ page.authors | join: ", " }}</p>
         {% endif %}
         {% if page.pdf_url %}
         <a href="{{ page.pdf_url }}" target="_blank" class="book-link">Open Book</a>
