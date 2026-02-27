@@ -1,0 +1,323 @@
+---
+layout: default
+---
+<div class="page-header">
+  <div class="page-header-row">
+    <h1 class="page-title">Book Shelf</h1>
+    <button class="btn btn-primary" id="add-book-btn">Add Book</button>
+  </div>
+</div>
+
+<div class="search-section">
+  <div class="search-box">
+    <input type="text" id="book-search" placeholder="Search for books by title or author...">
+    <button id="search-btn" class="btn btn-primary">Search</button>
+  </div>
+</div>
+
+<div id="search-results" class="search-results" style="display: none;">
+  <h3>Search Results</h3>
+  <div id="results-grid" class="books-grid"></div>
+</div>
+
+<div id="books-section">
+  <p class="books-count"><span id="visible-count">{{ site.books.size }}</span> books</p>
+  
+  {% if site.books.size > 0 %}
+  <div class="books-grid">
+    {% assign books = site.books | sort: 'date_added' | reverse %}
+    {% for book in books %}
+    <a href="{{ book.url | relative_url }}" class="book-card">
+      {% if book.cover_url %}
+      <div class="book-card-cover">
+        <img src="{{ book.cover_url }}" alt="{{ book.title }}">
+      </div>
+      {% else %}
+      <div class="book-card-cover book-card-placeholder">
+        <span>No Cover</span>
+      </div>
+      {% endif %}
+      <div class="book-card-info">
+        <h3 class="book-card-title">{{ book.title }}</h3>
+        {% if book.authors %}
+        <p class="book-card-author">{{ book.authors | join: ", " }}</p>
+        {% endif %}
+        <div class="book-card-meta">
+          {% if book.publish_year %}
+          <span class="book-card-year">{{ book.publish_year }}</span>
+          {% endif %}
+          {% if book.pages %}
+          <span class="book-card-pages">{{ book.pages }} pages</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="no-results">No books yet. Search and add your first book!</p>
+  {% endif %}
+</div>
+
+<div id="add-modal" class="modal">
+  <div class="modal-content">
+    <h3>Add Book</h3>
+    <div id="selected-book-info">
+      <div class="selected-book-preview">
+        <img id="selected-cover" src="" alt="" style="display: none;">
+        <div id="selected-placeholder" class="book-cover-placeholder" style="display: none;">
+          <span>No Cover</span>
+        </div>
+        <div class="selected-book-details">
+          <h4 id="selected-title"></h4>
+          <p id="selected-author"></p>
+          <p id="selected-year"></p>
+          <p id="selected-publisher" class="detail-meta"></p>
+          <p id="selected-pages" class="detail-meta"></p>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Upload PDF (optional)</label>
+      <input type="file" id="book-pdf-file" accept=".pdf">
+    </div>
+    <div class="form-group">
+      <label>Or PDF URL</label>
+      <input type="text" id="book-pdf-url" placeholder="https://example.com/book.pdf">
+    </div>
+    <div class="modal-actions">
+      <button id="confirm-add" class="btn-primary">Add to Library</button>
+      <button id="cancel-add" class="btn-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="message-modal" class="modal">
+  <div class="modal-content">
+    <h3 id="message-title">Message</h3>
+    <p id="message-text"></p>
+    <div class="modal-actions">
+      <button id="close-message" class="btn-primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedBook = null;
+
+function showMessage(title, text) {
+  document.getElementById('message-title').textContent = title;
+  document.getElementById('message-text').textContent = text;
+  document.getElementById('message-modal').style.display = 'flex';
+}
+
+document.getElementById('close-message').addEventListener('click', function() {
+  document.getElementById('message-modal').style.display = 'none';
+});
+
+document.getElementById('search-btn').addEventListener('click', async function() {
+  const query = document.getElementById('book-search').value.trim();
+  if (!query) return;
+  
+  const resultsGrid = document.getElementById('results-grid');
+  resultsGrid.innerHTML = '<p>Searching...</p>';
+  document.getElementById('search-results').style.display = 'block';
+  document.getElementById('books-section').style.display = 'none';
+  
+  try {
+    const fields = 'key,title,author_name,first_publish_year,publisher,isbn,cover_i,subject,language,number_of_pages_median,edition_count';
+    const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=20&fields=${fields}`);
+    const data = await response.json();
+    
+    if (data.docs && data.docs.length > 0) {
+      resultsGrid.innerHTML = '';
+      
+      data.docs.forEach((book, index) => {
+        const coverUrl = book.cover_i 
+          ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`
+          : null;
+        
+        const title = book.title || 'Unknown Title';
+        const authors = book.author_name ? book.author_name.join(', ') : 'Unknown Author';
+        const author = book.author_name ? book.author_name[0] : 'Unknown Author';
+        const year = book.first_publish_year || '';
+        const isbn = book.isbn ? book.isbn[0] : '';
+        const isbn13 = book.isbn_13 ? book.isbn_13[0] : '';
+        const publishers = book.publisher ? book.publisher.join(', ') : '';
+        const publisher = book.publisher ? book.publisher[0] : '';
+        const subjects = book.subject ? book.subject.slice(0, 5) : [];
+        const languages = book.language ? book.language.join(', ') : '';
+        const pages = book.number_of_pages_median || '';
+        const editionCount = book.edition_count || '';
+        
+        const card = document.createElement('div');
+        card.className = 'book-card';
+        card.innerHTML = `
+          <div class="book-card-cover">
+            ${coverUrl 
+              ? `<img src="${coverUrl}" alt="${title}">` 
+              : `<div class="book-card-placeholder"><span>No Cover</span></div>`}
+          </div>
+          <div class="book-card-info">
+            <h3 class="book-card-title">${title}</h3>
+            <p class="book-card-author">${authors}</p>
+            ${year ? `<p class="book-card-year">${year}</p>` : ''}
+            ${publishers ? `<p class="book-card-publisher">${publishers}</p>` : ''}
+          </div>
+        `;
+        
+        card.addEventListener('click', async function(e) {
+          e.preventDefault();
+          
+          const workId = book.key ? book.key.replace('/works/', '') : '';
+          let description = '';
+          
+          if (workId) {
+            try {
+              const workResponse = await fetch(`https://openlibrary.org/works/${workId}.json`);
+              const workData = await workResponse.json();
+              if (workData.description) {
+                description = typeof workData.description === 'string' 
+                  ? workData.description 
+                  : workData.description.value || '';
+              }
+            } catch (err) {
+              console.log('Could not fetch description');
+            }
+          }
+          
+          selectedBook = {
+            title: title,
+            authors: authors,
+            author: author,
+            year: year,
+            isbn: isbn,
+            isbn13: isbn13,
+            coverUrl: coverUrl,
+            olid: workId,
+            publishers: publishers,
+            publisher: publisher,
+            subjects: subjects,
+            languages: languages,
+            pages: pages,
+            editionCount: editionCount,
+            description: description
+          };
+          
+          document.getElementById('selected-title').textContent = title;
+          document.getElementById('selected-author').textContent = authors;
+          
+          let yearText = year;
+          if (publisher) yearText += (yearText ? ' - ' : '') + publisher;
+          document.getElementById('selected-year').textContent = yearText;
+          
+          if (pages) {
+            document.getElementById('selected-pages').textContent = pages + ' pages';
+            document.getElementById('selected-pages').style.display = 'block';
+          } else {
+            document.getElementById('selected-pages').style.display = 'none';
+          }
+          
+          const coverImg = document.getElementById('selected-cover');
+          const placeholder = document.getElementById('selected-placeholder');
+          
+          if (coverUrl) {
+            coverImg.src = coverUrl;
+            coverImg.style.display = 'block';
+            placeholder.style.display = 'none';
+          } else {
+            coverImg.style.display = 'none';
+            placeholder.style.display = 'flex';
+          }
+          
+          document.getElementById('add-modal').style.display = 'flex';
+        });
+        
+        resultsGrid.appendChild(card);
+      });
+    } else {
+      resultsGrid.innerHTML = '<p>No books found. Try a different search.</p>';
+    }
+  } catch (error) {
+    resultsGrid.innerHTML = '<p>Error searching books: ' + error.message + '</p>';
+  }
+});
+
+document.getElementById('book-search').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    document.getElementById('search-btn').click();
+  }
+});
+
+document.getElementById('cancel-add').addEventListener('click', function() {
+  document.getElementById('add-modal').style.display = 'none';
+  selectedBook = null;
+  document.getElementById('book-pdf-url').value = '';
+  document.getElementById('book-pdf-file').value = '';
+});
+
+document.getElementById('confirm-add').addEventListener('click', async function() {
+  if (!selectedBook) return;
+  
+  let pdfUrl = document.getElementById('book-pdf-url').value.trim();
+  const pdfFile = document.getElementById('book-pdf-file').files[0];
+  
+  try {
+    if (pdfFile) {
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      
+      const uploadResponse = await fetch('http://localhost:4567/upload-pdf', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const uploadData = await uploadResponse.json();
+      if (uploadData.success) {
+        pdfUrl = uploadData.url;
+      }
+    }
+    
+    const response = await fetch('http://localhost:4567/add-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: selectedBook.title,
+        authors: selectedBook.authors,
+        author: selectedBook.author,
+        year: selectedBook.year,
+        isbn: selectedBook.isbn,
+        isbn13: selectedBook.isbn13,
+        coverUrl: selectedBook.coverUrl,
+        olid: selectedBook.olid,
+        publishers: selectedBook.publishers,
+        publisher: selectedBook.publisher,
+        subjects: selectedBook.subjects,
+        languages: selectedBook.languages,
+        pages: selectedBook.pages,
+        editionCount: selectedBook.editionCount,
+        description: selectedBook.description,
+        pdfUrl: pdfUrl
+      })
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      document.getElementById('add-modal').style.display = 'none';
+      showMessage('Success', 'Book added successfully! Rebuilding site...');
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showMessage('Error', data.error || 'Failed to add book');
+    }
+  } catch (error) {
+    showMessage('Error', 'Error adding book: ' + error.message);
+  }
+});
+
+document.getElementById('add-book-btn').addEventListener('click', function() {
+  document.getElementById('book-search').focus();
+});
+</script>

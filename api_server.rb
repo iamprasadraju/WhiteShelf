@@ -7,10 +7,10 @@ require 'yaml'
 PORT = 4567
 ROOT_DIR = File.dirname(__FILE__)
 PAPERS_DIR = File.join(ROOT_DIR, '_papers')
-ROADMAPS_DIR = File.join(ROOT_DIR, '_roadmaps')
+BOOKS_DIR = File.join(ROOT_DIR, '_books')
 
 Dir.mkdir(PAPERS_DIR) unless Dir.exist?(PAPERS_DIR)
-Dir.mkdir(ROADMAPS_DIR) unless Dir.exist?(ROADMAPS_DIR)
+Dir.mkdir(BOOKS_DIR) unless Dir.exist?(BOOKS_DIR)
 
 # Custom servlet to handle CORS properly
 class CORSServlet < WEBrick::HTTPServlet::AbstractServlet
@@ -260,44 +260,7 @@ class UpdatePaperServlet < WEBrick::HTTPServlet::AbstractServlet
   end
 end
 
-class ListRoadmapsServlet < WEBrick::HTTPServlet::AbstractServlet
-  def do_OPTIONS(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-    res['Access-Control-Allow-Headers'] = 'Content-Type'
-    res['Content-Type'] = 'text/plain'
-    res.body = ''
-  end
-  
-  def do_GET(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Content-Type'] = 'application/json'
-    
-    begin
-      roadmaps = Dir.glob(File.join(ROADMAPS_DIR, '*.md')).map do |f|
-        content = File.read(f)
-        frontmatter = {}
-        if content =~ /\A---\n(.*?)\n---/m
-          YAML.safe_load(Regexp.last_match(1), permitted_classes: [Date]).each { |k, v| frontmatter[k] = v }
-        end
-        {
-          filename: File.basename(f),
-          title: frontmatter['title'] || File.basename(f, '.md'),
-          description: frontmatter['description'] || '',
-          category: frontmatter['category'] || ''
-        }
-      end
-      
-      res.status = 200
-      res.body = { success: true, roadmaps: roadmaps, count: roadmaps.size }.to_json
-    rescue => e
-      res.status = 500
-      res.body = { success: false, error: e.message }.to_json
-    end
-  end
-end
-
-class AddRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
+class AddBookServlet < WEBrick::HTTPServlet::AbstractServlet
   def do_OPTIONS(req, res)
     res['Access-Control-Allow-Origin'] = '*'
     res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
@@ -313,23 +276,50 @@ class AddRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
     begin
       data = JSON.parse(req.body)
       
-      filename = data['filename'].to_s.strip
-      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
-      filename = filename + '.md' unless filename.end_with?('.md')
-      
-      filepath = File.join(ROADMAPS_DIR, filename)
-      
-      if File.exist?(filepath)
-        raise "File already exists: #{filename}"
+      title = data['title'].to_s.strip
+      if title.empty?
+        raise 'Missing title'
       end
+      
+      title_slug = title.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/^-|-$/, '')
+      filename = "#{title_slug}-#{Time.now.to_i}.md"
+      filepath = File.join(BOOKS_DIR, filename)
+      
+      authors = data['author'].to_s.split(',').map(&:strip).reject(&:empty?)
+      cover_url = data['coverUrl'].to_s
+      category = data['category'].to_s.strip
+      pdf_url = data['pdfUrl'].to_s.strip
+      
+      subjects = data['subjects'] || []
+      publishers = data['publishers'].to_s
+      publisher = data['publisher'].to_s
+      languages = data['languages'].to_s
+      pages = data['pages'].to_s
+      edition_count = data['editionCount'].to_s
+      isbn13 = data['isbn13'].to_s
+      description = data['description'].to_s
       
       content = <<~CONTENT
 ---
-title: "#{data['title'] || 'Untitled'}"
-description: "#{data['description'] || ''}"
-category: "#{data['category'] || 'general'}"
-nodes: []
+title: "#{title}"
+authors: [#{authors.map { |a| '"' + a + '"' }.join(', ')}]
+author: "#{data['author']}"
+publish_year: "#{data['year']}"
+isbn: "#{data['isbn']}"
+isbn13: "#{isbn13}"
+cover_url: "#{cover_url}"
+openlibrary_url: "#{data['olid'] ? 'https://openlibrary.org/works/' + data['olid'] : ''}"
+publishers: "#{publishers}"
+publisher: "#{publisher}"
+subjects: [#{subjects.map { |s| '"' + s + '"' }.join(', ')}]
+languages: "#{languages}"
+pages: "#{pages}"
+edition_count: "#{edition_count}"
+description: "#{description}"
+pdf_url: "#{pdf_url}"
+date_added: #{Time.now.strftime('%Y-%m-%d')}
 ---
+
       CONTENT
       
       File.write(filepath, content)
@@ -337,7 +327,7 @@ nodes: []
       res.status = 200
       res.body = { success: true, filename: filename, path: filepath }.to_json
       
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Added roadmap: #{filename}"
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Added book: #{title}"
       
     rescue JSON::ParserError => e
       res.status = 400
@@ -350,7 +340,7 @@ nodes: []
   end
 end
 
-class DeleteRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
+class DeleteBookServlet < WEBrick::HTTPServlet::AbstractServlet
   def do_OPTIONS(req, res)
     res['Access-Control-Allow-Origin'] = '*'
     res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
@@ -367,10 +357,11 @@ class DeleteRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
       data = JSON.parse(req.body)
       filename = data['filename'].to_s.strip
       
-      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
-      filename = filename + '.md' unless filename.end_with?('.md')
+      if filename.empty?
+        raise 'Missing filename'
+      end
       
-      filepath = File.join(ROADMAPS_DIR, filename)
+      filepath = File.join(BOOKS_DIR, filename)
       
       unless File.exist?(filepath)
         raise "File not found: #{filename}"
@@ -381,7 +372,7 @@ class DeleteRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
       res.status = 200
       res.body = { success: true, filename: filename }.to_json
       
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Deleted roadmap: #{filename}"
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Deleted book: #{filename}"
       
     rescue JSON::ParserError => e
       res.status = 400
@@ -394,7 +385,67 @@ class DeleteRoadmapServlet < WEBrick::HTTPServlet::AbstractServlet
   end
 end
 
-class AddNodeServlet < WEBrick::HTTPServlet::AbstractServlet
+class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
+  def do_OPTIONS(req, res)
+    res['Access-Control-Allow-Origin'] = '*'
+    res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    res['Access-Control-Allow-Headers'] = 'Content-Type'
+    res['Content-Type'] = 'text/plain'
+    res.body = ''
+  end
+  
+  def do_POST(req, res)
+    res['Access-Control-Allow-Origin'] = '*'
+    res['Content-Type'] = 'application/json'
+    
+    begin
+      upload_dir = File.join(ROOT_DIR, '_pdfs')
+      Dir.mkdir(upload_dir) unless Dir.exist?(upload_dir)
+      
+      boundary = req['Content-Type'][/boundary=(.+)/, 1]
+      return res.body = { success: false, error: 'No file uploaded' }.to_json unless boundary
+      
+      body = req.body
+      parts = body.split("--#{boundary}")
+      
+      file_content = nil
+      filename = nil
+      
+      parts.each do |part|
+        if part.include?('filename=')
+          filename_match = part.match(/filename="(.+?)"/)
+          filename = filename_match[1] if filename_match
+          
+          content_match = part.match(/\r\n\r\n(.+)\r\n--/m)
+          if content_match
+            file_content = content_match[1]
+          end
+        end
+      end
+      
+      return res.body = { success: false, error: 'No file found' }.to_json unless file_content && filename
+      
+      safe_filename = filename.gsub(/[^a-zA-Z0-9._-]/, '_')
+      filepath = File.join(upload_dir, safe_filename)
+      
+      File.write(filepath, file_content)
+      
+      pdf_url = "/_pdfs/#{safe_filename}"
+      
+      res.status = 200
+      res.body = { success: true, url: pdf_url, filename: safe_filename }.to_json
+      
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Uploaded PDF: #{safe_filename}"
+      
+    rescue => e
+      res.status = 500
+      res.body = { success: false, error: e.message }.to_json
+      puts "[ERROR] #{e.message}"
+    end
+  end
+end
+
+class UpdateBookServlet < WEBrick::HTTPServlet::AbstractServlet
   def do_OPTIONS(req, res)
     res['Access-Control-Allow-Origin'] = '*'
     res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
@@ -411,10 +462,11 @@ class AddNodeServlet < WEBrick::HTTPServlet::AbstractServlet
       data = JSON.parse(req.body)
       filename = data['filename'].to_s.strip
       
-      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
-      filename = filename + '.md' unless filename.end_with?('.md')
+      if filename.empty?
+        raise 'Missing filename'
+      end
       
-      filepath = File.join(ROADMAPS_DIR, filename)
+      filepath = File.join(BOOKS_DIR, filename)
       
       unless File.exist?(filepath)
         raise "File not found: #{filename}"
@@ -427,18 +479,13 @@ class AddNodeServlet < WEBrick::HTTPServlet::AbstractServlet
         frontmatter = YAML.safe_load(Regexp.last_match(1), permitted_classes: [Date]) || {}
       end
       
-      nodes = frontmatter['nodes'] || []
+      if data['category']
+        frontmatter['category'] = data['category']
+      end
       
-      new_node = {
-        'id' => data['id'] || "node_#{Time.now.to_i}",
-        'label' => data['label'] || 'New Node',
-        'parents' => [],
-        'resources' => [],
-        'notes' => ''
-      }
-      
-      nodes << new_node
-      frontmatter['nodes'] = nodes
+      if data.key?('pdfUrl')
+        frontmatter['pdf_url'] = data['pdfUrl']
+      end
       
       new_frontmatter = frontmatter.map { |k, v| 
         if v.is_a?(Array)
@@ -463,178 +510,9 @@ class AddNodeServlet < WEBrick::HTTPServlet::AbstractServlet
       File.write(filepath, new_content)
       
       res.status = 200
-      res.body = { success: true, node: new_node }.to_json
+      res.body = { success: true, filename: filename }.to_json
       
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Added node to #{filename}"
-      
-    rescue JSON::ParserError => e
-      res.status = 400
-      res.body = { success: false, error: 'Invalid JSON' }.to_json
-    rescue => e
-      res.status = 500
-      res.body = { success: false, error: e.message }.to_json
-      puts "[ERROR] #{e.message}"
-    end
-  end
-end
-
-class UpdateNodeServlet < WEBrick::HTTPServlet::AbstractServlet
-  def do_OPTIONS(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    res['Access-Control-Allow-Headers'] = 'Content-Type'
-    res['Content-Type'] = 'text/plain'
-    res.body = ''
-  end
-  
-  def do_POST(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Content-Type'] = 'application/json'
-    
-    begin
-      data = JSON.parse(req.body)
-      filename = data['filename'].to_s.strip
-      node_id = data['node_id']
-      
-      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
-      filename = filename + '.md' unless filename.end_with?('.md')
-      
-      filepath = File.join(ROADMAPS_DIR, filename)
-      
-      unless File.exist?(filepath)
-        raise "File not found: #{filename}"
-      end
-      
-      content = File.read(filepath)
-      
-      frontmatter = {}
-      if content =~ /\A---\n(.*?)\n---/m
-        frontmatter = YAML.safe_load(Regexp.last_match(1), permitted_classes: [Date]) || {}
-      end
-      
-      nodes = frontmatter['nodes'] || []
-      
-      node_index = nodes.find_index { |n| n['id'] == node_id }
-      raise "Node not found: #{node_id}" unless node_index
-      
-      if data['label']
-        nodes[node_index]['label'] = data['label']
-      end
-      if data.key?('parents')
-        nodes[node_index]['parents'] = data['parents']
-      end
-      if data['resources']
-        nodes[node_index]['resources'] = data['resources']
-      end
-      if data['notes']
-        nodes[node_index]['notes'] = data['notes']
-      end
-      
-      frontmatter['nodes'] = nodes
-      
-      new_frontmatter = frontmatter.map { |k, v| 
-        if v.is_a?(Array)
-          if v.empty?
-            "#{k}: []"
-          else
-            "#{k}: [" + v.map { |e| 
-              if e.is_a?(Hash)
-                '{' + e.map { |kk, vv| "\"#{kk}\": #{vv.is_a?(String) ? '"' + vv + '"' : vv}" }.join(', ') + '}'
-              else
-                '"' + e.to_s + '"'
-              end
-            }.join(', ') + ']'
-          end
-        else
-          "#{k}: #{v.is_a?(String) ? '"' + v + '"' : v}"
-        end
-      }.join("\n")
-      
-      new_content = content.sub(/\A---.*?---\n/m, "---\n#{new_frontmatter}\n---\n")
-      
-      File.write(filepath, new_content)
-      
-      res.status = 200
-      res.body = { success: true, node: nodes[node_index] }.to_json
-      
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Updated node #{node_id} in #{filename}"
-      
-    rescue JSON::ParserError => e
-      res.status = 400
-      res.body = { success: false, error: 'Invalid JSON' }.to_json
-    rescue => e
-      res.status = 500
-      res.body = { success: false, error: e.message }.to_json
-      puts "[ERROR] #{e.message}"
-    end
-  end
-end
-
-class DeleteNodeServlet < WEBrick::HTTPServlet::AbstractServlet
-  def do_OPTIONS(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    res['Access-Control-Allow-Headers'] = 'Content-Type'
-    res['Content-Type'] = 'text/plain'
-    res.body = ''
-  end
-  
-  def do_POST(req, res)
-    res['Access-Control-Allow-Origin'] = '*'
-    res['Content-Type'] = 'application/json'
-    
-    begin
-      data = JSON.parse(req.body)
-      filename = data['filename'].to_s.strip
-      node_id = data['node_id']
-      
-      filename = filename.gsub(/[^a-z0-9_.-]/i, '_')
-      filename = filename + '.md' unless filename.end_with?('.md')
-      
-      filepath = File.join(ROADMAPS_DIR, filename)
-      
-      unless File.exist?(filepath)
-        raise "File not found: #{filename}"
-      end
-      
-      content = File.read(filepath)
-      
-      frontmatter = {}
-      if content =~ /\A---\n(.*?)\n---/m
-        frontmatter = YAML.safe_load(Regexp.last_match(1), permitted_classes: [Date]) || {}
-      end
-      
-      nodes = frontmatter['nodes'] || []
-      nodes = nodes.reject { |n| n['id'] == node_id }
-      
-      frontmatter['nodes'] = nodes
-      
-      new_frontmatter = frontmatter.map { |k, v| 
-        if v.is_a?(Array)
-          if v.empty?
-            "#{k}: []"
-          else
-            "#{k}: [" + v.map { |e| 
-              if e.is_a?(Hash)
-                '{' + e.map { |kk, vv| "\"#{kk}\": #{vv.is_a?(String) ? '"' + vv + '"' : vv}" }.join(', ') + '}'
-              else
-                '"' + e.to_s + '"'
-              end
-            }.join(', ') + ']'
-          end
-        else
-          "#{k}: #{v.is_a?(String) ? '"' + v + '"' : v}"
-        end
-      }.join("\n")
-      
-      new_content = content.sub(/\A---.*?---\n/m, "---\n#{new_frontmatter}\n---\n")
-      
-      File.write(filepath, new_content)
-      
-      res.status = 200
-      res.body = { success: true }.to_json
-      
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Deleted node #{node_id} from #{filename}"
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Updated book: #{filename}"
       
     rescue JSON::ParserError => e
       res.status = 400
@@ -656,14 +534,12 @@ server = WEBrick::HTTPServer.new(
 server.mount('/add-paper', AddPaperServlet)
 server.mount('/delete-paper', DeletePaperServlet)
 server.mount('/update-paper', UpdatePaperServlet)
-server.mount('/add-roadmap', AddRoadmapServlet)
-server.mount('/delete-roadmap', DeleteRoadmapServlet)
-server.mount('/add-node', AddNodeServlet)
-server.mount('/update-node', UpdateNodeServlet)
-server.mount('/delete-node', DeleteNodeServlet)
+server.mount('/add-book', AddBookServlet)
+server.mount('/upload-pdf', UploadPdfServlet)
+server.mount('/update-book', UpdateBookServlet)
+server.mount('/delete-book', DeleteBookServlet)
 server.mount('/rebuild', RebuildServlet)
 server.mount('/list-papers', ListPapersServlet)
-server.mount('/list-roadmaps', ListRoadmapsServlet)
 
 trap('INT') do
   puts "\n[#{Time.now.strftime('%H:%M:%S')}] Shutting down..."
@@ -680,19 +556,17 @@ puts "WhiteShelf API Server"
 puts "=" * 50
 puts "URL:      http://localhost:#{PORT}"
 puts "Papers:   #{PAPERS_DIR}"
+puts "Books:    #{BOOKS_DIR}"
 puts ""
 puts "Endpoints:"
-puts "  POST /add-paper      Add a new paper"
+puts "  POST /add-paper     Add a new paper"
 puts "  POST /delete-paper  Delete a paper"
 puts "  POST /update-paper  Update paper"
-puts "  POST /add-roadmap   Add a roadmap"
-puts "  POST /delete-roadmap Delete a roadmap"
-puts "  POST /add-node      Add node to roadmap"
-puts "  POST /update-node  Update node in roadmap"
-puts "  POST /delete-node  Delete node from roadmap"
+puts "  POST /add-book      Add a book"
+puts "  POST /update-book   Update book"
+puts "  POST /delete-book   Delete a book"
 puts "  POST /rebuild       Rebuild Jekyll site"
 puts "  GET  /list-papers   List all papers"
-puts "  GET  /list-roadmaps List all roadmaps"
 puts ""
 puts "Press Ctrl+C to stop"
 puts "=" * 50

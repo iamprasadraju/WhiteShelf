@@ -7,9 +7,9 @@ collections:
   papers:
     output: true
     permalink: /papers/:slug
-  roadmaps:
+  books:
     output: true
-    permalink: /roadmaps/:slug
+    permalink: /books/:slug
 
 defaults:
   - scope:
@@ -19,9 +19,9 @@ defaults:
       layout: "paper"
   - scope:
       path: ""
-      type: "roadmaps"
+      type: "books"
     values:
-      layout: "roadmap"
+      layout: "book"
 
 exclude:
   - Gemfile
@@ -34,3 +34,4 @@ exclude:
 
 include:
   - _pages
+  - _pdfs
