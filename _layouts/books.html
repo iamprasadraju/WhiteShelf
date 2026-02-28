@@ -168,7 +168,8 @@ document.getElementById('search-btn').addEventListener('click', async function()
   
   try {
     const fields = 'key,title,author_name,first_publish_year,publisher,isbn,cover_i,subject,language,number_of_pages_median,edition_count';
-    const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=20&fields=${fields}`);
+    const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=20&fields=${fields}`;
+    const response = await fetch(searchUrl);
     const data = await response.json();
     
     if (data.docs && data.docs.length > 0) {
@@ -216,13 +217,14 @@ document.getElementById('search-btn').addEventListener('click', async function()
           
           if (workId) {
             try {
-              const workResponse = await fetch(`https://openlibrary.org/works/${workId}.json`);
+              const workUrl = `https://openlibrary.org/works/${workId}.json`;
+              const workResponse = await fetch(workUrl);
               const workData = await workResponse.json();
               if (workData.description) {
                 description = typeof workData.description === 'string' 
                   ? workData.description 
                   : workData.description.value || '';
-                description = description.replace(/^"+|"+$/, '').replace(/\\"/g, '"').replace(/\n/g, ' ').replace(/--/g, '-').trim();
+                description = description.replace(/^"+|"+$/, '').replace(/\\"/g, '"').replace(/\n/g, ' ').replace(/--+/g, '-').trim();
                 description = description.substring(0, 2000);
               }
             } catch (err) {

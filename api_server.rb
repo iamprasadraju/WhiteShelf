@@ -10,9 +10,16 @@ PAPERS_DIR = File.join(ROOT_DIR, '_papers')
 BOOKS_DIR = File.join(ROOT_DIR, '_books')
 PDFS_DIR = File.join(ROOT_DIR, '_pdfs')
 
+def yaml_escape(str)
+  return '' if str.nil?
+  YAML.dump(str.to_s).sub(/\A---\s*/, '').chomp
+end
+
 Dir.mkdir(PAPERS_DIR) unless Dir.exist?(PAPERS_DIR)
 Dir.mkdir(BOOKS_DIR) unless Dir.exist?(BOOKS_DIR)
 Dir.mkdir(PDFS_DIR) unless Dir.exist?(PDFS_DIR)
+COVERS_DIR = File.join(ROOT_DIR, '_covers')
+Dir.mkdir(COVERS_DIR) unless Dir.exist?(COVERS_DIR)
 
 # Custom servlet to handle CORS properly
 class CORSServlet < WEBrick::HTTPServlet::AbstractServlet
@@ -303,25 +310,26 @@ class AddBookServlet < WEBrick::HTTPServlet::AbstractServlet
       description = data['description'].to_s
       description = description.gsub(/^["']+|["']+$/, '').gsub('\\"', '"').gsub("\n", ' ').gsub('--+', '-').strip
       description = description[0..2000] if description.length > 2000
+      description = YAML.dump(description).sub(/\A---\s*/, '').chomp
       
       content = <<~CONTENT
 ---
-title: "#{title}"
-authors: [#{authors.map { |a| '"' + a + '"' }.join(', ')}]
-author: "#{data['author']}"
-publish_year: "#{data['year']}"
-isbn: "#{data['isbn']}"
-isbn13: "#{isbn13}"
-cover_url: "#{cover_url}"
-openlibrary_url: "#{data['olid'] ? 'https://openlibrary.org/works/' + data['olid'] : ''}"
-publishers: "#{publishers}"
-publisher: "#{publisher}"
-subjects: [#{subjects.map { |s| '"' + s + '"' }.join(', ')}]
-languages: "#{languages}"
-pages: "#{pages}"
-edition_count: "#{edition_count}"
-description: "#{description}"
-pdf_url: "#{pdf_url}"
+title: #{yaml_escape(title)}
+authors: [#{authors.map { |a| yaml_escape(a) }.join(', ')}]
+author: #{yaml_escape(data['author'])}
+publish_year: #{yaml_escape(data['year'])}
+isbn: #{yaml_escape(data['isbn'])}
+isbn13: #{yaml_escape(isbn13)}
+cover_url: #{yaml_escape(cover_url)}
+openlibrary_url: #{yaml_escape(data['olid'] ? 'https://openlibrary.org/works/' + data['olid'] : '')}
+publishers: #{yaml_escape(publishers)}
+publisher: #{yaml_escape(publisher)}
+subjects: [#{subjects.map { |s| yaml_escape(s) }.join(', ')}]
+languages: #{yaml_escape(languages)}
+pages: #{yaml_escape(pages)}
+edition_count: #{yaml_escape(edition_count)}
+description: #{description}
+pdf_url: #{yaml_escape(pdf_url)}
 date_added: #{Time.now.strftime('%Y-%m-%d')}
 ---
 
@@ -421,9 +429,6 @@ class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
     res['Content-Type'] = 'application/json'
     
     begin
-      upload_dir = File.join(ROOT_DIR, '_pdfs')
-      Dir.mkdir(upload_dir) unless Dir.exist?(upload_dir)
-      
       body = req.body
       content_type = req['Content-Type']
       
@@ -432,6 +437,22 @@ class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
       else
         return res.body = { success: false, error: 'No boundary' }.to_json
       end
+      
+      file_type = 'pdf'
+      body.split("--#{boundary}").each do |part|
+        if part.include?('name="type"')
+          if part =~ /name="type"\s*\r?\n\r?\n(.+)(\r\n|--)/
+            file_type = $1.strip.downcase
+          end
+        end
+      end
+      
+      upload_dir = if file_type == 'cover'
+        File.join(ROOT_DIR, '_covers')
+      else
+        File.join(ROOT_DIR, '_pdfs')
+      end
+      Dir.mkdir(upload_dir) unless Dir.exist?(upload_dir)
       
       filename = nil
       file_data = nil
@@ -454,7 +475,7 @@ class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
       end
       
       if !filename || !file_data || file_data.length < 100
-        return res.body = { success: false, error: 'Could not parse PDF file' }.to_json
+        return res.body = { success: false, error: 'Could not parse file' }.to_json
       end
       
       safe_filename = filename.gsub(/[^a-zA-Z0-9._-]/, '_')
@@ -463,12 +484,12 @@ class UploadPdfServlet < WEBrick::HTTPServlet::AbstractServlet
       
       File.binwrite(filepath, file_data)
       
-      pdf_url = "/ResearchRack/_pdfs/#{safe_filename}"
+      url_path = file_type == 'cover' ? "/ResearchRack/_covers/#{safe_filename}" : "/ResearchRack/_pdfs/#{safe_filename}"
       
       res.status = 200
-      res.body = { success: true, url: pdf_url, filename: safe_filename }.to_json
+      res.body = { success: true, url: url_path, filename: safe_filename }.to_json
       
-      puts "[#{Time.now.strftime('%H:%M:%S')}] Uploaded PDF: #{safe_filename}"
+      puts "[#{Time.now.strftime('%H:%M:%S')}] Uploaded #{file_type}: #{safe_filename}"
     rescue => e
       res.status = 500
       res.body = { success: false, error: e.message }.to_json
@@ -515,8 +536,44 @@ class UpdateBookServlet < WEBrick::HTTPServlet::AbstractServlet
         frontmatter['category'] = data['category']
       end
       
-      if data.key?('pdfUrl')
-        frontmatter['pdf_url'] = data['pdfUrl']
+      if data.key?('pdf_url')
+        frontmatter['pdf_url'] = data['pdf_url']
+      end
+      
+      if data.key?('cover_url')
+        frontmatter['cover_url'] = data['cover_url']
+      end
+      
+      if data.key?('title')
+        frontmatter['title'] = data['title']
+      end
+      
+      if data.key?('author')
+        frontmatter['author'] = data['author']
+        frontmatter['authors'] = data['author'].split(',').map(&:strip)
+      end
+      
+      if data.key?('publisher')
+        frontmatter['publisher'] = data['publisher']
+      end
+      
+      if data.key?('publish_year')
+        frontmatter['publish_year'] = data['publish_year']
+      end
+      
+      if data.key?('pages')
+        frontmatter['pages'] = data['pages']
+      end
+      
+      if data.key?('isbn')
+        frontmatter['isbn'] = data['isbn']
+      end
+      
+      if data.key?('description')
+        desc = data['description'].to_s
+        desc = desc.gsub(/^["']+|["']+$/, '').gsub('\\"', '"').gsub("\n", ' ').gsub('--+', '-').strip
+        desc = YAML.dump(desc).sub(/\A---\s*/, '').chomp
+        frontmatter['description'] = desc
       end
       
       new_frontmatter = frontmatter.map { |k, v| 

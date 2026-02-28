@@ -6,6 +6,7 @@ layout: default
   
   <div class="book-header-row">
     <div class="book-cover-wrapper">
+      <div class="book-cover-title">{{ page.title }}</div>
       {% if page.cover_url %}
       <img src="{{ page.cover_url }}" alt="{{ page.title }}" class="book-cover-img">
       {% else %}
@@ -78,24 +79,70 @@ layout: default
 <div class="book-actions-row">
   <a href="{{ '/books' | relative_url }}" class="back-link">&larr; Back to Books</a>
   <div class="book-buttons">
-    <button class="btn-edit-book" data-filename="{{ page.name }}">Edit PDF</button>
+    <button class="btn-edit-book" data-filename="{{ page.name }}">Edit Book</button>
     <button class="btn-delete-book" data-filename="{{ page.name }}">Delete</button>
   </div>
 </div>
 
 <div id="edit-modal" class="modal">
-  <div class="modal-content">
-    <h3>Edit Book PDF</h3>
-    <div class="form-group">
-      <label>Upload PDF</label>
-      <input type="file" id="edit-pdf-file" accept=".pdf">
+  <div class="modal-content modal-wide">
+    <h3>Edit Book</h3>
+    
+    <div class="edit-form-grid">
+      <div class="edit-form-left">
+        <div class="form-group">
+          <label>Custom Cover Image</label>
+          <input type="file" id="edit-cover-file" accept="image/*">
+          <input type="text" id="edit-cover-url" placeholder="Or enter image URL">
+        </div>
+        
+        <div class="form-group">
+          <label>PDF File</label>
+          <input type="file" id="edit-pdf-file" accept=".pdf">
+          <input type="text" id="edit-pdf-url" placeholder="Or enter PDF URL">
+        </div>
+      </div>
+      
+      <div class="edit-form-right">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="edit-title" value="{{ page.title }}">
+        </div>
+        
+        <div class="form-group">
+          <label>Author</label>
+          <input type="text" id="edit-author" value="{{ page.author }}">
+        </div>
+        
+        <div class="form-group">
+          <label>Publisher</label>
+          <input type="text" id="edit-publisher" value="{{ page.publisher }}">
+        </div>
+        
+        <div class="form-group">
+          <label>Year</label>
+          <input type="text" id="edit-year" value="{{ page.publish_year }}">
+        </div>
+        
+        <div class="form-group">
+          <label>Pages</label>
+          <input type="text" id="edit-pages" value="{{ page.pages }}">
+        </div>
+        
+        <div class="form-group">
+          <label>ISBN</label>
+          <input type="text" id="edit-isbn" value="{{ page.isbn }}">
+        </div>
+        
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="edit-description" rows="4">{{ page.description }}</textarea>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Or PDF URL</label>
-      <input type="text" id="edit-pdf-url" placeholder="https://example.com/book.pdf">
-    </div>
+    
     <div class="modal-actions">
-      <button id="save-edit" class="btn-primary">Save</button>
+      <button id="save-edit" class="btn-primary">Save Changes</button>
       <button id="cancel-edit" class="btn-cancel">Cancel</button>
     </div>
   </div>
@@ -125,11 +172,6 @@ layout: default
 <script>
 const currentPdfUrl = '{{ page.pdf_url | default: "" }}';
 
-if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
-  document.querySelector('.btn-edit-book').style.display = 'none';
-  document.querySelector('.btn-delete-book').style.display = 'none';
-}
-
 document.getElementById('edit-pdf-url').value = currentPdfUrl;
 
 function showMessage(title, text) {
@@ -149,42 +191,68 @@ document.querySelector('.btn-edit-book').addEventListener('click', function() {
 document.getElementById('cancel-edit').addEventListener('click', function() {
   document.getElementById('edit-modal').style.display = 'none';
   document.getElementById('edit-pdf-file').value = '';
+  document.getElementById('edit-cover-file').value = '';
 });
 
 document.getElementById('save-edit').addEventListener('click', async function() {
   const filename = document.querySelector('.btn-edit-book').dataset.filename;
   let pdfUrl = document.getElementById('edit-pdf-url').value.trim();
+  let coverUrl = document.getElementById('edit-cover-url').value.trim();
   const pdfFile = document.getElementById('edit-pdf-file').files[0];
+  const coverFile = document.getElementById('edit-cover-file').files[0];
+  
+  const updateData = {
+    filename: filename,
+    title: document.getElementById('edit-title').value.trim(),
+    author: document.getElementById('edit-author').value.trim(),
+    publisher: document.getElementById('edit-publisher').value.trim(),
+    publish_year: document.getElementById('edit-year').value.trim(),
+    pages: document.getElementById('edit-pages').value.trim(),
+    isbn: document.getElementById('edit-isbn').value.trim(),
+    description: document.getElementById('edit-description').value.trim()
+  };
   
   try {
+    if (coverFile) {
+      const formData = new FormData();
+      formData.append('file', coverFile);
+      formData.append('type', 'cover');
+      const uploadResponse = await fetch('http://localhost:4567/upload-pdf', { method: 'POST', body: formData });
+      const uploadData = await uploadResponse.json();
+      if (uploadData.success) {
+        coverUrl = uploadData.url;
+      }
+    }
+    
+    if (coverUrl) {
+      updateData.cover_url = coverUrl;
+    }
+    
     if (pdfFile) {
       const formData = new FormData();
       formData.append('file', pdfFile);
+      formData.append('type', 'pdf');
       const uploadResponse = await fetch('http://localhost:4567/upload-pdf', { method: 'POST', body: formData });
       const uploadData = await uploadResponse.json();
       if (uploadData.success) {
         pdfUrl = uploadData.url;
-      } else {
-        showMessage('Error', uploadData.error || 'Failed to upload PDF');
-        return;
       }
     }
     
-    if (!pdfUrl) {
-      showMessage('Error', 'Please upload a PDF or enter a PDF URL');
-      return;
+    if (pdfUrl) {
+      updateData.pdf_url = pdfUrl;
     }
     
     const response = await fetch('http://localhost:4567/update-book', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: filename, pdfUrl: pdfUrl })
+      body: JSON.stringify(updateData)
     });
     const data = await response.json();
     
     if (data.success) {
       document.getElementById('edit-modal').style.display = 'none';
-      showMessage('Success', 'PDF added! Page will reload...');
+      showMessage('Success', 'Book updated! Page will reload...');
       setTimeout(() => window.location.reload(), 1500);
     } else {
       showMessage('Error', data.error || 'Failed to update');

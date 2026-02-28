@@ -35,3 +35,4 @@ exclude:
 include:
   - _pages
   - _pdfs
+  - _covers
