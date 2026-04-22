@@ -646,6 +646,7 @@ class PdfServlet < WEBrick::HTTPServlet::AbstractServlet
 end
 
 server.mount('/_pdfs', PdfServlet)
+server.mount('/add-paper', AddPaperServlet)
 server.mount('/delete-paper', DeletePaperServlet)
 server.mount('/update-paper', UpdatePaperServlet)
 server.mount('/add-book', AddBookServlet)
