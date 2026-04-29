@@ -18,6 +18,6 @@ description: "The text covers the biophysics of single neurons, synaptic interac
   modeling and abstract representations used in systems and cognitive neuroscience.
   Mathematical formulations—differential equations, stochastic processes, and mean-field
   theory—are presented alongside conceptual explanations."
-pdf_url: "/ResearchRack/_pdfs/1772302822__OceanofPDF.com_Neuronal_Dynamics_-_Wulfram_Gerstner.pdf"
+pdf_url: "https://drive.google.com/file/d/1lJ0vCW01PwBfNgTvfPyT01S6oLc9IewO/view?usp=drive_link"
 date_added: 2026-02-28
 ---

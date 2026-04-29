@@ -18,7 +18,7 @@ description: "The textbook spans the biological basis of behavior, from the mole
   biochemistry, and psychology to explain how neural circuits give rise to perception,
   movement, emotion, and thought. Each edition reflects advances in neural imaging,
   genetics, and computational neuroscience."
-pdf_url: "/ResearchRack/_pdfs/1772303421__OceanofPDF.com_Principles_of_Neural_Science_-_Eric_R_Kandel.pdf"
+pdf_url: "https://drive.google.com/file/d/1S7i87D7tZcv455YQwDj_8zyJQckT-u5P/view?usp=drive_link"
 date_added: 2026-02-28
 ---
 

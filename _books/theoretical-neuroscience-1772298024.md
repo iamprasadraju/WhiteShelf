@@ -18,7 +18,7 @@ description: "The book introduces mathematical tools for analyzing the nervous s
   approaches to understanding neural coding, dynamics, and plasticity. By deriving
   principles from first-order models to network-level behavior, the text establishes
   a rigorous framework for linking brain function to computation."
-pdf_url: "/ResearchRack/_pdfs/1772302859_Theoretical_Neuroscience_Computational_and_Mathematical_Modeling_of_Neural_Systems_-__Peter_Dayan__L._F._Abbott.pdf"
+pdf_url: "https://drive.google.com/file/d/1ixpOP32O3nQt8pjj_Bh3Lq8_2sVrq3Rd/view?usp=drive_link"
 date_added: 2026-02-28
 ---
 

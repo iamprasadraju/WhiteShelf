@@ -32,7 +32,7 @@ description: "An Introduction to Statistical Learning provides an accessible ove
   and non-statisticians alike who wish to use cutting-edge statistical learning techniques
   to analyze their data. The text assumes only a previous course in linear regression
   and no knowledge of matrix algebra."
-pdf_url: "/ResearchRack/_pdfs/1773664768_ISLP_website.pdf"
+pdf_url: "https://drive.google.com/file/d/1-7uqWojHqqh5Ss57BOr47E-2CD0W4P-0/view?usp=drive_link"
 date_added: 2026-03-16
 ---
 

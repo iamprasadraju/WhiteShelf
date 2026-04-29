@@ -20,7 +20,7 @@ description: "Deep learning is a form of machine learning that enables computers
   of concepts allows the computer to learn complicated concepts by building them out
   of simpler ones; a graph of these hierarchies would be many layers deep. This book
   introduces a broad range of topics in deep learning."
-pdf_url: "/ResearchRack/_pdfs/1772190713_Deep_Learning_Ian_Goodfellow.pdf"
+pdf_url: "https://drive.google.com/file/d/1O5J0LjY9cTMAH8wv_i0wB5Ntjrw1dRiJ/view?usp=drive_link"
 date_added: 2026-02-27
 ---
 

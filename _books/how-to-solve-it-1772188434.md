@@ -20,7 +20,7 @@ description: "A perennial bestseller by eminent mathematician G. Polya, How to S
   a bridge to winning a game of anagrams. Generations of readers have relished Polya’s
   deft—indeed, brilliant—instructions on stripping away irrelevancies and going straight
   to the heart of the problem."
-pdf_url: "/ResearchRack/_pdfs/1772191606_George_Polya_How_To_Solve_It_.pdf"
+pdf_url: "https://drive.google.com/file/d/1rCd1whSTc1PAWB77LEBmiFFZmkn3WG68/view?usp=drive_link"
 date_added: 2026-02-27
 ---
 

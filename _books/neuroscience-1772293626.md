@@ -28,7 +28,7 @@ description: "'Neuroscience: Exploring the Brain surveys the organization and fu
   sex, emotion, sleep, language, attention, and mental illness. Finally, in Part IV,
   we look at how the environment modifies the brain, both during development and in
   adult learning and memory - Provided by publisher.'"
-pdf_url: "/ResearchRack/_pdfs/1772303866_Neuroscience_-_Bear.pdf"
+pdf_url: "https://drive.google.com/file/d/14kE49c7QUcFrXUXpfWK8pY2zvzVG2He9/view?usp=drive_link"
 date_added: 2026-02-28
 ---
 

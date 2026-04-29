@@ -18,6 +18,6 @@ description: "This is a text in basic mathematics with multiple uses for either 
   of mathematics which are necessary to know in order to go ahead in calculus, linear
   algebra or other topics. The subject matter is clearly covered and the author develops
   concepts so the reader can see how one subject matter can relate and grow into another."
-pdf_url: "/ResearchRack/_pdfs/1772191517_Basic_Mathematics_-_Serge_Lang.pdf"
+pdf_url: "https://drive.google.com/file/d/1V6oIglR6ASSSdcwW7zkqtDpzEbsgYYSX/view?usp=drive_link"
 date_added: 2026-02-27
 ---
